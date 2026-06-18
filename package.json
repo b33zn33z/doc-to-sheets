@@ -1,0 +1,9 @@
+{
+  "name": "doc-to-sheets-automator",
+  "version": "2.0.0",
+  "description": "Extract data from images & documents — auto-infographic dashboard",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "@vercel/kv": "^2.0.0"
+  }
+}

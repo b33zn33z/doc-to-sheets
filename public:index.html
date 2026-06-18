@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doc → Infographic Automator</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --p:#2D0A2E;--pm:#C84AB2;--pl:#f3e6f5;--pl2:#fdf6fe;
+      --t:#1a1a1a;--tm:#555;--ts:#888;
+      --bg:#f7f2f8;--card:#fff;--border:#e8dded;
+      --r:12px;--r2:8px;
+      --teal:#0d7377;--teal-l:#e0f5f5;
+      --amber:#b45309;--amber-l:#fef3c7;
+      --pink:#be185d;--pink-l:#fce7f3;
+    }
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
+    a{color:var(--pm)}
+
+    /* ── NAV ── */
+    nav{background:var(--p);padding:0 24px;display:flex;align-items:center;gap:0;height:56px}
+    .nav-logo{display:flex;align-items:center;gap:10px;color:#fff;font-family:'DM Serif Display',serif;font-size:18px;margin-right:auto}
+    .nav-logo svg{opacity:.9}
+    .nav-tab{color:rgba(255,255,255,.6);font-size:13px;font-weight:500;padding:0 16px;height:56px;display:flex;align-items:center;cursor:pointer;border-bottom:2px solid transparent;transition:.15s;background:none;border-left:none;border-right:none;border-top:none}
+    .nav-tab:hover{color:#fff}
+    .nav-tab.active{color:#fff;border-bottom-color:var(--pm)}
+
+    /* ── LAYOUT ── */
+    .page{display:none;max-width:900px;margin:0 auto;padding:32px 20px 60px}
+    .page.active{display:block}
+
+    /* ── CARDS ── */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-bottom:16px}
+    .card-sm{padding:16px 20px}
+    .section-title{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--pm);text-transform:uppercase;margin-bottom:12px}
+
+    /* ── UPLOAD ── */
+    .drop-zone{border:2px dashed var(--border);border-radius:var(--r);padding:40px 20px;text-align:center;cursor:pointer;transition:.2s;background:var(--pl2)}
+    .drop-zone:hover,.drop-zone.drag{border-color:var(--pm);background:var(--pl)}
+    .drop-icon{width:52px;height:52px;background:var(--pl);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+    .drop-title{font-size:15px;font-weight:600;margin-bottom:4px}
+    .drop-sub{font-size:12px;color:var(--ts)}
+    .compress-badge{display:inline-flex;align-items:center;gap:4px;background:#e0f5f5;color:var(--teal);border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;margin-top:10px}
+
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+    .chip{display:inline-flex;align-items:center;gap:6px;background:var(--pl);color:var(--p);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:500}
+    .chip button{background:none;border:none;cursor:pointer;color:var(--pm);font-size:13px;padding:0;line-height:1}
+    .chip .size-info{font-size:10px;opacity:.7}
+
+    /* ── FORM ── */
+    label.lbl{display:block;font-size:13px;font-weight:500;margin-bottom:5px}
+    input[type=text],textarea,select{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r2);background:#fff;color:var(--t);outline:none;transition:border .15s}
+    input[type=text]:focus,textarea:focus,select:focus{border-color:var(--pm)}
+    textarea{resize:vertical;min-height:64px}
+    .hint{font-size:12px;color:var(--ts);margin-top:4px}
+    .field{margin-bottom:14px}
+
+    /* ── BUTTONS ── */
+    .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--t);transition:.15s;text-decoration:none}
+    .btn:hover{background:var(--pl2)}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+    .btn-primary{background:var(--p);color:#fff;border-color:transparent;padding:12px 28px;font-size:15px}
+    .btn-primary:hover{background:#3d1040}
+    .btn-primary:disabled{background:#999;border-color:transparent}
+    .btn-outline{border-color:var(--pm);color:var(--pm)}
+    .btn-outline:hover{background:var(--pl)}
+    .btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+    /* ── PROGRESS ── */
+    .progress-wrap{margin-top:16px}
+    .progress-lbl{font-size:13px;color:var(--ts);margin-bottom:6px}
+    .progress-track{height:5px;background:var(--border);border-radius:999px;overflow:hidden}
+    .progress-fill{height:100%;background:linear-gradient(90deg,var(--p),var(--pm));border-radius:999px;transition:width .4s ease;width:0%}
+
+    /* ── ALERT ── */
+    .alert{padding:12px 16px;border-radius:var(--r2);font-size:13px;margin-top:12px;display:flex;align-items:flex-start;gap:8px}
+    .alert-danger{background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5}
+    .alert-success{background:#f0fdf4;color:#166534;border:1px solid #86efac}
+    .alert-info{background:var(--pl);color:var(--p);border:1px solid var(--border)}
+
+    /* ── INFOGRAPHIC DASHBOARD ── */
+    .infographic{animation:fadeIn .4s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+    .highlights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+    .highlight-card{border-radius:var(--r);padding:16px 18px;border:1px solid transparent}
+    .highlight-card.purple{background:var(--pl);border-color:#dcc6e0}
+    .highlight-card.pink{background:var(--pink-l);border-color:#f9a8d4}
+    .highlight-card.teal{background:var(--teal-l);border-color:#99e6e8}
+    .highlight-card.amber{background:var(--amber-l);border-color:#fcd34d}
+    .highlight-val{font-size:26px;font-weight:700;font-family:'DM Serif Display',serif;line-height:1;margin-bottom:4px}
+    .highlight-card.purple .highlight-val{color:var(--p)}
+    .highlight-card.pink .highlight-val{color:var(--pink)}
+    .highlight-card.teal .highlight-val{color:var(--teal)}
+    .highlight-card.amber .highlight-val{color:var(--amber)}
+    .highlight-lbl{font-size:12px;font-weight:500;color:var(--tm)}
+
+    .bullets-card{background:var(--pl2);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:16px}
+    .bullet-item{display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.6;padding:5px 0;border-bottom:1px solid var(--border)}
+    .bullet-item:last-child{border-bottom:none}
+    .bullet-emoji{font-size:18px;line-height:1.4;flex-shrink:0}
+
+    .chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px}
+    .chart-title{font-size:14px;font-weight:600;color:var(--t);margin-bottom:16px}
+    .chart-wrap{position:relative;height:280px}
+
+    /* ── DATA TABLE ── */
+    .table-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r2)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{background:var(--p);color:#fff;text-align:left;padding:10px 12px;font-weight:500;font-size:12px;white-space:nowrap}
+    td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--t);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    tr:last-child td{border-bottom:none}
+    tr:nth-child(even) td{background:var(--pl2)}
+    td:hover{white-space:normal;max-width:none}
+
+    /* ── HISTORY ── */
+    .dataset-list{display:flex;flex-direction:column;gap:10px}
+    .dataset-item{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;transition:.15s}
+    .dataset-item:hover{border-color:var(--pm);background:var(--pl2)}
+    .dataset-icon{width:40px;height:40px;background:var(--pl);border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .dataset-info{flex:1;min-width:0}
+    .dataset-name{font-size:14px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dataset-meta{font-size:12px;color:var(--ts)}
+    .dataset-arrow{color:var(--ts);font-size:18px}
+    .empty-state{text-align:center;padding:48px 24px;color:var(--ts)}
+    .empty-state .big{font-size:48px;margin-bottom:12px}
+    .empty-state p{font-size:14px}
+
+    /* ── STEPS ── */
+    .steps{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+    .step-row{display:flex;align-items:flex-start;gap:12px;font-size:13px;line-height:1.6}
+    .step-num{width:22px;height:22px;min-width:22px;background:var(--p);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-top:2px}
+
+    .spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .hidden{display:none!important}
+    .divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+
+    @media(max-width:600px){
+      .page{padding:16px 12px 60px}
+      .highlights-grid{grid-template-columns:1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="7" fill="rgba(255,255,255,.15)"/>
+      <rect x="5" y="7" width="18" height="2.5" rx="1.25" fill="white"/>
+      <rect x="5" y="11.5" width="12" height="2" rx="1" fill="rgba(255,255,255,.7)"/>
+      <rect x="5" y="15.5" width="15" height="2" rx="1" fill="rgba(255,255,255,.7)"/>
+      <circle cx="21" cy="20" r="5" fill="#C84AB2"/>
+      <path d="M19.2 20l1.3 1.3L22.8 18.7" stroke="white" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    DataLens
+  </div>
+  <button class="nav-tab active" onclick="showPage('upload')">Upload</button>
+  <button class="nav-tab" onclick="showPage('dashboard')" id="dashTab">Dashboard</button>
+  <button class="nav-tab" onclick="showPage('history')">Saved</button>
+</nav>
+
+<!-- ════════════ UPLOAD PAGE ════════════ -->
+<div class="page active" id="page-upload">
+  <div class="card">
+    <div class="section-title">Step 1 — Upload files</div>
+    <div class="drop-zone" id="dropzone"
+         onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="handleDrop(event)">
+      <div class="drop-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C84AB2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <div class="drop-title">Drop files here or click to browse</div>
+      <div class="drop-sub">PNG, JPG, PDF, CSV, TXT, DOCX, XLSX</div>
+      <div class="compress-badge">⚡ Images auto-compressed to stay under 4.5 MB</div>
+    </div>
+    <input type="file" id="fileInput" multiple accept=".png,.jpg,.jpeg,.pdf,.docx,.csv,.txt,.xlsx" style="display:none" onchange="handleFiles(this.files)">
+    <div class="chips" id="chipList"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Step 2 — Configure</div>
+    <div class="field">
+      <label class="lbl">Dataset name</label>
+      <input type="text" id="titleInput" placeholder="e.g. Patient Records June 2026">
+    </div>
+    <div class="field">
+      <label class="lbl">What to extract <span style="font-weight:400;color:var(--ts)">(optional)</span></label>
+      <textarea id="extractPrompt" placeholder="e.g. Extract patient name, date, diagnosis, medication from each file"></textarea>
+      <p class="hint">Leave blank to auto-detect all structured data.</p>
+    </div>
+    <div class="field">
+      <label class="lbl">Column names <span style="font-weight:400;color:var(--ts)">(optional)</span></label>
+      <input type="text" id="colsInput" placeholder="e.g. Name, Date, Amount, Category">
+      <p class="hint">Leave blank to auto-detect from content.</p>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="extractBtn" onclick="startExtraction()" disabled>
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Extract &amp; Generate Infographic
+  </button>
+
+  <div class="progress-wrap hidden" id="progressArea">
+    <div class="progress-lbl" id="progressLbl">Processing...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+  <div id="alertArea"></div>
+</div>
+
+<!-- ════════════ DASHBOARD PAGE ════════════ -->
+<div class="page" id="page-dashboard">
+  <div id="dashEmpty" class="card" style="text-align:center;padding:48px">
+    <div style="font-size:48px;margin-bottom:12px">📊</div>
+    <p style="color:var(--ts);font-size:14px">Upload files first to see your infographic dashboard here.</p>
+    <button class="btn btn-primary" style="margin-top:16px;display:inline-flex" onclick="showPage('upload')">Go to Upload</button>
+  </div>
+
+  <div id="dashContent" class="hidden infographic">
+    <!-- Dynamic content injected here -->
+  </div>
+</div>
+
+<!-- ════════════ HISTORY PAGE ════════════ -->
+<div class="page" id="page-history">
+  <div class="card card-sm" style="margin-bottom:20px">
+    <div style="font-size:13px;color:var(--ts)">Previously extracted datasets are saved here. Click any to reload its infographic.</div>
+  </div>
+  <div id="historyList" class="dataset-list">
+    <div class="empty-state"><div class="big">🗂️</div><p>No saved datasets yet.</p></div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let uploadedFiles = [];
+let currentDataset = null; // { id, headers, rows, title }
+let currentSummary = null;
+let chartInstance = null;
+
+// ── PAGE NAV ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event?.target?.classList.add('active');
+  if (name === 'history') loadHistory();
+  if (name === 'dashboard' && currentDataset) renderDashboard();
+}
+
+// ── FILE HANDLING ──
+function handleFiles(files) {
+  for (const f of files) uploadedFiles.push(f);
+  renderChips();
+  document.getElementById('extractBtn').disabled = uploadedFiles.length === 0;
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('drag');
+  handleFiles(e.dataTransfer.files);
+}
+
+function removeFile(i) {
+  uploadedFiles.splice(i, 1);
+  renderChips();
+  document.getElementById('extractBtn').disabled = uploadedFiles.length === 0;
+}
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+function renderChips() {
+  document.getElementById('chipList').innerHTML = uploadedFiles.map((f, i) => `
+    <span class="chip">
+      <span>${fileEmoji(f.name)}</span>
+      <span>${f.name}</span>
+      <span class="size-info">${fmtSize(f.size)}</span>
+      <button onclick="removeFile(${i})">✕</button>
+    </span>`).join('');
+}
+
+function fileEmoji(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  if (['png','jpg','jpeg','gif','webp'].includes(ext)) return '🖼️';
+  if (ext === 'pdf') return '📄';
+  if (['doc','docx'].includes(ext)) return '📝';
+  if (ext === 'csv') return '📊';
+  if (['xls','xlsx'].includes(ext)) return '📗';
+  return '📁';
+}
+
+// ── IMAGE COMPRESSION ──
+async function compressImage(file, maxW = 1400, quality = 0.82) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width: w, height: h } = img;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        // If compression actually makes it bigger, use original
+        if (blob && blob.size < file.size) {
+          const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+          resolve(compressed);
+        } else {
+          resolve(file);
+        }
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+// ── EXTRACTION ──
+async function startExtraction() {
+  const btn = document.getElementById('extractBtn');
+  clearAlert();
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Extracting...';
+  show('progressArea');
+  setProgress(5, 'Reading & compressing files...');
+
+  const extractPrompt = document.getElementById('extractPrompt').value.trim();
+  const columns = document.getElementById('colsInput').value.trim();
+  const title = document.getElementById('titleInput').value.trim() || `Dataset ${new Date().toLocaleDateString('en-MY')}`;
+
+  const filesPayload = [];
+  let totalB64 = 0;
+
+  for (let i = 0; i < uploadedFiles.length; i++) {
+    let f = uploadedFiles[i];
+    setProgress(5 + Math.round((i / uploadedFiles.length) * 30), `Processing ${f.name}...`);
+
+    try {
+      if (f.type.startsWith('image/')) {
+        // Auto-compress
+        const origSize = f.size;
+        f = await compressImage(f);
+        const b64 = await fileToBase64(f);
+        totalB64 += b64.length * 0.75; // approx bytes
+        const saved = origSize - f.size;
+        filesPayload.push({ name: uploadedFiles[i].name, type: 'image', mediaType: f.type, data: b64,
+          compressed: saved > 1000, savedBytes: saved });
+      } else {
+        const text = await readAsText(f);
+        filesPayload.push({ name: f.name, type: 'text', data: text });
+      }
+    } catch(e) {
+      filesPayload.push({ name: f.name, type: 'text', data: '[Could not read file]' });
+    }
+  }
+
+  // Warn if still large
+  if (totalB64 > 3.5 * 1024 * 1024) {
+    showAlert('⚠️ Total file size is large (~' + (totalB64/1048576).toFixed(1) + ' MB). Consider uploading fewer files at once.', 'info');
+  }
+
+  setProgress(40, 'Sending to Claude AI...');
+
+  try {
+    const resp = await fetch('/api/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: filesPayload, extractPrompt, columns, title })
+    });
+    const result = await resp.json();
+    if (!resp.ok || result.error) throw new Error(result.error || 'Server error ' + resp.status);
+
+    setProgress(72, 'Building infographic...');
+    currentDataset = { id: result.id, headers: result.headers, rows: result.rows || [], title };
+
+    // Save to localStorage too for history
+    saveToLocalHistory(currentDataset);
+
+    // Fetch AI summary/chart data
+    setProgress(85, 'Generating insights...');
+    await fetchSummary(result.id);
+
+    setProgress(100, `Done! ${(result.rows||[]).length} rows extracted.`);
+
+    // Auto-navigate to dashboard
+    setTimeout(() => {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-dashboard').classList.add('active');
+      document.querySelectorAll('.nav-tab')[1].classList.add('active');
+      renderDashboard();
+    }, 600);
+
+  } catch(err) {
+    showAlert(err.message, 'danger');
+    hide('progressArea');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Extract &amp; Generate Infographic';
+  document.getElementById('extractBtn').disabled = uploadedFiles.length === 0;
+}
+
+async function fetchSummary(id) {
+  try {
+    const resp = await fetch('/api/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'summary', id })
+    });
+    currentSummary = await resp.json();
+  } catch(e) {
+    currentSummary = { bullets: ['Data extracted successfully'], highlights: [], chartSuggestion: 'none', chartData: [] };
+  }
+}
+
+// ── DASHBOARD RENDER ──
+function renderDashboard() {
+  if (!currentDataset) return;
+  const el = document.getElementById('dashContent');
+  hide('dashEmpty');
+  el.classList.remove('hidden');
+
+  const s = currentSummary || {};
+  const highlights = s.highlights || [];
+  const bullets = s.bullets || [];
+  const chartType = s.chartSuggestion || 'none';
+  const chartData = s.chartData || [];
+
+  let html = '';
+
+  // Title bar
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+    <div>
+      <div style="font-family:'DM Serif Display',serif;font-size:24px;color:var(--p)">${currentDataset.title}</div>
+      <div style="font-size:13px;color:var(--ts);margin-top:2px">${currentDataset.rows.length} rows · ${currentDataset.headers.length} columns · Extracted ${new Date().toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'})}</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="downloadCSV()">⬇ Download CSV</button>
+      <a href="https://sheets.google.com" target="_blank" class="btn">📊 Open Sheets</a>
+    </div>
+  </div>`;
+
+  // Highlights
+  if (highlights.length) {
+    html += '<div class="highlights-grid">';
+    for (const h of highlights) {
+      html += `<div class="highlight-card ${h.color||'purple'}">
+        <div class="highlight-val">${h.value}</div>
+        <div class="highlight-lbl">${h.label}</div>
+      </div>`;
+    }
+    html += '</div>';
+  } else {
+    // Fallback highlights
+    html += `<div class="highlights-grid">
+      <div class="highlight-card purple"><div class="highlight-val">${currentDataset.rows.length}</div><div class="highlight-lbl">Total Records</div></div>
+      <div class="highlight-card teal"><div class="highlight-val">${currentDataset.headers.length}</div><div class="highlight-lbl">Data Columns</div></div>
+      <div class="highlight-card pink"><div class="highlight-val">${[...new Set(currentDataset.rows.map(r=>r[0]))].length}</div><div class="highlight-lbl">Source Files</div></div>
+    </div>`;
+  }
+
+  // Insights
+  if (bullets.length) {
+    html += '<div class="bullets-card"><div class="section-title" style="margin-bottom:8px">Key Insights</div>';
+    for (const b of bullets) {
+      const emoji = b.match(/^[\p{Emoji}]/u)?.[0] || '•';
+      const text = b.replace(/^[\p{Emoji}\s]/u, '').trim();
+      html += `<div class="bullet-item"><span class="bullet-emoji">${emoji}</span><span>${text}</span></div>`;
+    }
+    html += '</div>';
+  }
+
+  // Chart
+  if (chartType !== 'none' && chartData.length > 0) {
+    html += `<div class="chart-card">
+      <div class="chart-title">${s.chartTitle || 'Data Breakdown'}</div>
+      <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+    </div>`;
+  }
+
+  // Table
+  html += `<div class="card" style="padding:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div class="section-title" style="margin:0">Raw Data Table</div>
+      <input type="text" placeholder="Search..." oninput="filterTable(this.value)" style="width:200px;padding:6px 10px;font-size:13px">
+    </div>
+    <div class="table-scroll">
+      <table id="dataTable">
+        <thead><tr>${currentDataset.headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+        <tbody id="tableBody">${renderRows(currentDataset.rows.slice(0,200))}</tbody>
+      </table>
+    </div>
+    ${currentDataset.rows.length > 200 ? `<p style="text-align:center;font-size:12px;color:var(--ts);margin-top:10px">Showing 200 of ${currentDataset.rows.length} rows. Download CSV for full data.</p>` : ''}
+  </div>`;
+
+  // Sheets instructions
+  html += `<div class="card card-sm">
+    <div class="section-title">Share as view-only Google Sheet</div>
+    <div class="steps">
+      <div class="step-row"><div class="step-num">1</div><div>Download CSV → go to <a href="https://sheets.google.com" target="_blank">sheets.google.com</a> → new spreadsheet</div></div>
+      <div class="step-row"><div class="step-num">2</div><div><strong>File → Import → Upload</strong> → select CSV → Import data</div></div>
+      <div class="step-row"><div class="step-num">3</div><div><strong>Share → Anyone with link → Viewer</strong> — they can see but never edit</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <input type="text" id="sheetUrl" placeholder="Paste your Sheet link here to save it..." style="flex:1;min-width:200px">
+      <button class="btn btn-outline" onclick="copyUrl()">Copy link</button>
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
+
+  // Render chart after DOM update
+  if (chartType !== 'none' && chartData.length > 0) {
+    setTimeout(() => renderChart(chartType, chartData, s.chartTitle), 50);
+  }
+}
+
+function renderRows(rows) {
+  return rows.map(row =>
+    '<tr>' + (currentDataset.headers.map((_, i) =>
+      `<td title="${String(row[i]??'')}">${row[i]??''}</td>`
+    ).join('')) + '</tr>'
+  ).join('');
+}
+
+function filterTable(q) {
+  const body = document.getElementById('tableBody');
+  if (!body || !currentDataset) return;
+  const ql = q.toLowerCase();
+  const filtered = q
+    ? currentDataset.rows.filter(row => row.some(cell => String(cell??'').toLowerCase().includes(ql)))
+    : currentDataset.rows.slice(0, 200);
+  body.innerHTML = renderRows(filtered.slice(0, 200));
+}
+
+function renderChart(type, data, title) {
+  const canvas = document.getElementById('mainChart');
+  if (!canvas) return;
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  const labels = data.map(d => d.label);
+  const values = data.map(d => Number(d.value) || 0);
+
+  const purples = ['#2D0A2E','#C84AB2','#7b2d8b','#e082c8','#9c4dcc','#d4a0e0','#5c1769','#f0c0e8'];
+
+  const cfg = {
+    bar: {
+      type: 'bar',
+      data: { labels, datasets: [{ data: values, backgroundColor: purples.slice(0, values.length), borderRadius: 6, borderSkipped: false }] },
+      options: { plugins: { legend: { display: false }, title: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f0e8f4' } }, x: { grid: { display: false } } }, responsive: true, maintainAspectRatio: false }
+    },
+    pie: {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data: values, backgroundColor: purples, borderWidth: 2, borderColor: '#fff' }] },
+      options: { plugins: { legend: { position: 'right', labels: { font: { size: 12 }, padding: 16 } } }, responsive: true, maintainAspectRatio: false, cutout: '55%' }
+    },
+    line: {
+      type: 'line',
+      data: { labels, datasets: [{ data: values, borderColor: '#C84AB2', backgroundColor: 'rgba(200,74,178,.1)', borderWidth: 2.5, pointBackgroundColor: '#C84AB2', pointRadius: 4, tension: 0.3, fill: true }] },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f0e8f4' } }, x: { grid: { display: false } } }, responsive: true, maintainAspectRatio: false }
+    }
+  };
+
+  const chosen = cfg[type] || cfg['bar'];
+  chartInstance = new Chart(canvas, chosen);
+}
+
+// ── HISTORY ──
+function saveToLocalHistory(dataset) {
+  try {
+    const existing = JSON.parse(localStorage.getItem('datalens_history') || '[]');
+    const filtered = existing.filter(d => d.id !== dataset.id);
+    filtered.unshift({ id: dataset.id, title: dataset.title, rowCount: dataset.rows.length, headers: dataset.headers, rows: dataset.rows, createdAt: Date.now() });
+    localStorage.setItem('datalens_history', JSON.stringify(filtered.slice(0, 15)));
+  } catch(e) {}
+}
+
+function loadHistory() {
+  try {
+    const items = JSON.parse(localStorage.getItem('datalens_history') || '[]');
+    const el = document.getElementById('historyList');
+    if (!items.length) {
+      el.innerHTML = '<div class="empty-state"><div class="big">🗂️</div><p>No saved datasets yet.<br>Upload files to get started.</p></div>';
+      return;
+    }
+    el.innerHTML = items.map(d => `
+      <div class="dataset-item" onclick="loadFromHistory('${d.id}')">
+        <div class="dataset-icon">📊</div>
+        <div class="dataset-info">
+          <div class="dataset-name">${d.title}</div>
+          <div class="dataset-meta">${d.rowCount} rows · ${(d.headers||[]).length} columns · ${new Date(d.createdAt).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'})}</div>
+        </div>
+        <span class="dataset-arrow">›</span>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('historyList').innerHTML = '<div class="empty-state"><p>Could not load history.</p></div>';
+  }
+}
+
+async function loadFromHistory(id) {
+  try {
+    const items = JSON.parse(localStorage.getItem('datalens_history') || '[]');
+    const found = items.find(d => d.id === id);
+    if (found) {
+      currentDataset = found;
+      await fetchSummary(id).catch(() => {
+        currentSummary = { bullets: ['Dataset reloaded from history.'], highlights: [], chartSuggestion: 'none', chartData: [] };
+      });
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-dashboard').classList.add('active');
+      document.querySelectorAll('.nav-tab')[1].classList.add('active');
+      renderDashboard();
+    }
+  } catch(e) { alert('Could not load dataset.'); }
+}
+
+// ── UTILITIES ──
+function setProgress(pct, label) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLbl').textContent = label;
+}
+
+function show(id) { document.getElementById(id)?.classList.remove('hidden'); }
+function hide(id) { document.getElementById(id)?.classList.add('hidden'); }
+
+function showAlert(msg, type = 'danger') {
+  document.getElementById('alertArea').innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+}
+function clearAlert() { document.getElementById('alertArea').innerHTML = ''; }
+
+async function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function readAsText(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsText(file);
+  });
+}
+
+function downloadCSV() {
+  if (!currentDataset) return;
+  const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  let csv = currentDataset.headers.map(esc).join(',') + '\n';
+  for (const row of currentDataset.rows) csv += currentDataset.headers.map((_, i) => esc(row[i])).join(',') + '\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = (currentDataset.title || 'data').replace(/[^a-z0-9]/gi, '_') + '.csv';
+  a.click();
+}
+
+function copyUrl() {
+  const val = document.getElementById('sheetUrl')?.value.trim();
+  if (val) navigator.clipboard.writeText(val).then(() => showAlert('Link copied!', 'success'));
+}
+</script>
+</body>
+</html>
